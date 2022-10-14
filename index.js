@@ -27,9 +27,12 @@ const environment = await new contentful.createClient({
   });
 
 // Helper function for retrieving Drupal entities via JSON API.
+// TODO: Add batching logic.
 const fetchDrupalData = async (type) => {
   let response = await fetch(
-    `${sourceDomain}/jsonapi/${contentTypes[type].entityType}/${contentTypes[type].bundle}?include=${contentTypes[type].includedFields.join(',')}&page[limit]=1`
+    `${sourceDomain}/jsonapi/${contentTypes[type].entityType}/${contentTypes[type].bundle}?include=${contentTypes[type].includedFields.join(
+      ','
+    )}&page[limit]=10`
   );
   response = await response.json();
   return response;
@@ -56,7 +59,13 @@ const migrateMedia = async (mediaType, { id, attributes, relationships }, includ
   // otherwise create and return it.
   const existingEntry = await getExistingEntry(mediaType, imageWrapper.id);
   return existingEntry
-    ? existingEntry
+    ? {
+        sys: {
+          type: 'Link',
+          linkType: 'Entry',
+          id: existingEntry.sys.id,
+        },
+      }
     : await environment
         .createEntry(mediaType, {
           fields: {

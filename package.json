@@ -10,9 +10,11 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@contentful/rich-text-from-markdown": "^15.13.1",
     "chalk": "^5.1.2",
     "contentful-management": "^10.15.1",
     "dotenv": "^16.0.3",
-    "node-fetch": "^3.2.10"
+    "node-fetch": "^3.2.10",
+    "turndown": "^7.1.1"
   }
 }

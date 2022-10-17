@@ -2,6 +2,8 @@ import chalk from 'chalk';
 import fetch from 'node-fetch';
 import dotenv from 'dotenv';
 import contentful from 'contentful-management';
+import TurndownService from 'turndown';
+import { richTextFromMarkdown } from '@contentful/rich-text-from-markdown';
 
 // Init dotenv.
 dotenv.config();
@@ -30,9 +32,7 @@ const environment = await new contentful.createClient({
 // TODO: Add batching logic.
 const fetchDrupalData = async (type) => {
   let response = await fetch(
-    `${sourceDomain}/jsonapi/${contentTypes[type].entityType}/${contentTypes[type].bundle}?include=${contentTypes[type].includedFields.join(
-      ','
-    )}&page[limit]=10`
+    `${sourceDomain}/jsonapi/${contentTypes[type].entityType}/${contentTypes[type].bundle}?include=${contentTypes[type].includedFields.join(',')}&page[limit]=1`
   );
   response = await response.json();
   return response;
@@ -129,6 +129,22 @@ const createAsset = async (image) => {
     .catch(console.error);
 };
 
+// Init turndown for converting HTML into Markdown.
+const turndownService = new TurndownService();
+
+const createRichText = async (data) => {
+  if (!data) {
+    return null;
+  }
+  // First, convert HTML to Markdown.
+  const markdown = await turndownService.turndown(data);
+  // Next, convert Markdown to Rich Text.
+  return await richTextFromMarkdown(markdown, async (node) => {
+    // TODO: Processing for unsupported node types goes here.
+    // E.g. creating imageWrappers for WYSIWYG images.
+  });
+};
+
 (async function () {
   const { data, included } = await fetchDrupalData('article');
 
@@ -140,11 +156,14 @@ const createAsset = async (image) => {
     environment
       .createEntry('article', {
         fields: {
+          drupalUuid: {
+            'en-US': entry.id,
+          },
           title: {
             'en-US': entry.attributes.title,
           },
-          drupalUuid: {
-            'en-US': entry.id,
+          body: {
+            'en-US': await createRichText(entry.attributes.body.value),
           },
           image: {
             'en-US': await migrateMedia('imageWrapper', entry, included),
